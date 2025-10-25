@@ -6,9 +6,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  eslint: {
-    dirs: ['src'],
-  },
 };
 
 export default nextConfig;
