@@ -11,6 +11,19 @@ export default function Home() {
   const [mode, setMode] = React.useState<Mode>('select');
   const [roomId, setRoomId] = React.useState('');
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const urlMode = params.get('mode');
+    const urlRoomId = params.get('roomId');
+
+    if (urlMode === 'viewer' && urlRoomId) {
+      setRoomId(urlRoomId);
+      setMode('viewer');
+    }
+  }, []);
+
   const generateRoomId = () => {
     const id = Math.random().toString(36).substring(2, 8);
     setRoomId(id);
