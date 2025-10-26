@@ -22,58 +22,76 @@ export const ViewerMode = ({ roomId, onBack }: ViewerModeProps) => {
   const peerRef = React.useRef<SimplePeer.Instance | null>(null);
 
   React.useEffect(() => {
-    const initViewer = () => {
+    const initViewer = async () => {
+      setStatus('Socket.io 서버 초기화 중...');
+      console.log('[Viewer] Socket.io 엔드포인트 호출 시작');
+      const initRes = await fetch('/api/socket');
+      console.log('[Viewer] Socket.io 엔드포인트 응답:', initRes.status);
+
       setStatus('Socket.io 연결 중...');
+      console.log('[Viewer] Socket.io 클라이언트 연결 시작');
       const socket = io('/', { path: '/api/socket' });
       socketRef.current = socket;
 
       socket.on('connect', () => {
+        console.log('[Viewer] Socket.io 연결 성공! ID:', socket.id);
         setStatus(`룸 참가 중: ${roomId}`);
         socket.emit('join-room', roomId);
+        console.log('[Viewer] 룸 참가 요청:', roomId);
       });
 
       socket.on('offer', ({ signal }: { signal: SimplePeer.SignalData }) => {
+        console.log('[Viewer] Offer 수신');
         setStatus('Peer 연결 중...');
 
         const peer = new SimplePeer({
           initiator: false,
-          trickle: true,
+          trickle: false,
           config: { iceServers: ICE_SERVERS },
         });
 
         peerRef.current = peer;
 
-        peer.on('signal', (answerSignal) =>
-          socket.emit('answer', { roomId, signal: answerSignal })
-        );
+        peer.on('signal', (answerSignal) => {
+          console.log('[Viewer] Answer 생성, 전송 중');
+          socket.emit('answer', { roomId, signal: answerSignal });
+        });
 
         peer.on('stream', (stream) => {
+          console.log('[Viewer] 스트림 수신 성공!');
           setStatus('스트림 수신 성공!');
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
         });
 
-        peer.on('connect', () => setStatus('P2P 연결 성공!'));
+        peer.on('connect', () => {
+          console.log('[Viewer] P2P 연결 성공!');
+          setStatus('P2P 연결 성공!');
+        });
 
         peer.on('error', ({ message }) => {
-          console.error('Peer error:', message);
+          console.error('[Viewer] Peer error:', message);
           setStatus(`에러: ${message}`);
         });
 
         peer.signal(signal);
       });
 
-      socket.on('disconnect', () => setStatus('연결 끊김'));
+      socket.on('disconnect', () => {
+        console.log('[Viewer] Socket.io 연결 끊김');
+        setStatus('연결 끊김');
+      });
     };
 
     initViewer();
 
     return () => {
+      console.log('[Viewer] Cleanup 실행');
       peerRef.current?.destroy();
       socketRef.current?.disconnect();
     };
-  }, [roomId]);
+  }, []);
 
   return (
     <div className={cn('min-h-screen bg-gray-900 flex flex-col')}>
